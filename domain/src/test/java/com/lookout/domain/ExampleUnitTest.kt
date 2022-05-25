@@ -1,4 +1,4 @@
-package com.lookout.authenticatetestapp
+package com.lookout.domain
 
 import org.junit.Test
 
