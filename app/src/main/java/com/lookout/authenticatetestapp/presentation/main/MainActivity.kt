@@ -17,8 +17,8 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.lookout.authenticatetestapp.GITHUB_CLIENT_ID
-import com.lookout.authenticatetestapp.GITHUB_CLIENT_SECRET
+import androidx.core.net.toUri
+import com.lookout.authenticatetestapp.AuthConfig
 import com.lookout.authenticatetestapp.presentation.github.GithubActivity
 import com.lookout.authenticatetestapp.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
             if (ex != null) {
                 Log.e("Github Auth", "launcher: $ex")
             } else {
-                val secret = ClientSecretBasic(GITHUB_CLIENT_SECRET)
+                val secret = ClientSecretBasic(AuthConfig.CLIENT_SECRET)
                 val tokenRequest = result?.createTokenExchangeRequest()
 
                 tokenRequest?.let {
@@ -86,15 +86,21 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun githubAuth() {
-        val redirectUri = Uri.parse("authenticatetestapp://lookout.ac")
-        val authorizeUri = Uri.parse("https://github.com/login/oauth/authorize")
-        val tokenUri = Uri.parse("https://github.com/login/oauth/access_token")
-
-        val config = AuthorizationServiceConfiguration(authorizeUri, tokenUri)
+        val serviceConfiguration = AuthorizationServiceConfiguration(
+            Uri.parse(AuthConfig.AUTH_URI),
+            Uri.parse(AuthConfig.TOKEN_URI),
+            null,
+            Uri.parse(AuthConfig.END_SESSION_URI)
+        )
         val request =
             AuthorizationRequest
-                .Builder(config, GITHUB_CLIENT_ID, ResponseTypeValues.CODE, redirectUri)
-                .setScope("user repo admin")
+                .Builder(
+                    serviceConfiguration,
+                    AuthConfig.CLIENT_ID,
+                    AuthConfig.RESPONSE_TYPE,
+                    AuthConfig.CALLBACK_URL.toUri()
+                )
+                .setScope(AuthConfig.SCOPE)
                 .build()
         val intent = service.getAuthorizationRequestIntent(request)
         launcher.launch(intent)

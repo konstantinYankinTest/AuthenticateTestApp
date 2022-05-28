@@ -1,9 +1,9 @@
 package com.lookout.data.models
 
 import com.lookout.domain.models.GithubUser
-import kotlinx.serialization.Serializable
+import com.squareup.moshi.JsonClass
 
-@Serializable
+@JsonClass(generateAdapter = true)
 data class GitHubUserDTO(
     val avatar_url: String,
     val followers: Int,

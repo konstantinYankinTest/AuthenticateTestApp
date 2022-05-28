@@ -12,7 +12,9 @@ class Preferences @Inject constructor(
     private val preferences =
         context.getSharedPreferences("AUTHENTICATE_TEST_PREFS", Context.MODE_PRIVATE)
 
-    fun getGitHubToken() = preferences.getString(gitHubTokenKey, null)
-
-    fun setGitHubToken(token: String?) = preferences.edit().putString(gitHubTokenKey, token).apply()
+    var accessToken: String?
+    get() = preferences.getString(gitHubTokenKey, null)
+    set(value) {
+        preferences.edit().putString(gitHubTokenKey, value).apply()
+    }
 }

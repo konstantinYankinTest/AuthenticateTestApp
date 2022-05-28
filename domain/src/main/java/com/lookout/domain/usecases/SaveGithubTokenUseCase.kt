@@ -3,8 +3,8 @@ package com.lookout.domain.usecases
 import com.lookout.domain.repositories.GithubRepository
 import javax.inject.Inject
 
-class SaveGitHubTokenUseCase @Inject constructor(
+class SaveGithubTokenUseCase @Inject constructor(
     private val githubRepository: GithubRepository
 ) {
-    operator fun invoke(token: String) = githubRepository.addGitHubToken(token)
+    operator fun invoke(token: String) = githubRepository.addGithubToken(token)
 }

@@ -4,7 +4,9 @@ import com.lookout.domain.models.GithubUser
 
 interface GithubRepository {
 
-    fun addGitHubToken(token: String)
+    fun addGithubToken(token: String)
+
+    fun clearGithubToken()
 
     suspend fun getUserInfo(): GithubUser
 }
