@@ -1,9 +1,7 @@
 package com.lookout.authenticatetestapp.presentation.main
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
@@ -17,52 +15,33 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.core.net.toUri
-import com.lookout.authenticatetestapp.AuthConfig
+import com.lookout.authenticatetestapp.extention.launchWhenStarted
 import com.lookout.authenticatetestapp.presentation.github.GithubActivity
 import com.lookout.authenticatetestapp.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.onEach
 import net.openid.appauth.*
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
-    private lateinit var service: AuthorizationService
 
-    private val launcher = registerForActivityResult(StartActivityForResult()) {
-        if (it.resultCode == RESULT_OK) {
-            val ex = AuthorizationException.fromIntent(it.data)
-            val result = AuthorizationResponse.fromIntent(it.data ?: Intent())
-
-            if (ex != null) {
-                Log.e("Github Auth", "launcher: $ex")
-            } else {
-                val secret = ClientSecretBasic(AuthConfig.CLIENT_SECRET)
-                val tokenRequest = result?.createTokenExchangeRequest()
-
-                tokenRequest?.let {
-                    service.performTokenRequest(tokenRequest, secret) { res, exception ->
-                        if (exception != null) {
-                            Log.e("Github Auth", "launcher: ${exception.error}")
-                        } else {
-                            val token = res?.accessToken
-                            viewModel.setToken(token ?: "")
-
-                            val intent = Intent(this, GithubActivity::class.java)
-                            startActivity(intent)
-                            finish()
-                        }
-                    }
-                }
-            }
-        }
+    private val getAuthResponse = registerForActivityResult(StartActivityForResult()) {
+        val dataIntent = it.data ?: return@registerForActivityResult
+        handleAuthResponseIntent(dataIntent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        service = AuthorizationService(this)
+        viewModel.sideEffects
+            .onEach(::handleSideEffects)
+            .launchWhenStarted(this)
+
+        viewModel.state
+            .onEach(::handleViewState)
+            .launchWhenStarted(this)
 
         setContent {
             AppTheme {
@@ -75,7 +54,7 @@ class MainActivity : ComponentActivity() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
-                            onClick = { githubAuth() }
+                            onClick = { viewModel.openLoginPage() }
                         ) {
                             Text(text = "Login with Github")
                         }
@@ -85,30 +64,44 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun githubAuth() {
-        val serviceConfiguration = AuthorizationServiceConfiguration(
-            Uri.parse(AuthConfig.AUTH_URI),
-            Uri.parse(AuthConfig.TOKEN_URI),
-            null,
-            Uri.parse(AuthConfig.END_SESSION_URI)
-        )
-        val request =
-            AuthorizationRequest
-                .Builder(
-                    serviceConfiguration,
-                    AuthConfig.CLIENT_ID,
-                    AuthConfig.RESPONSE_TYPE,
-                    AuthConfig.CALLBACK_URL.toUri()
-                )
-                .setScope(AuthConfig.SCOPE)
-                .build()
-        val intent = service.getAuthorizationRequestIntent(request)
-        launcher.launch(intent)
+    private fun handleViewState(state: MainViewModel.State) {
+        when (state) {
+            MainViewModel.State.Empty -> {
+
+            }
+            is MainViewModel.State.Error -> {
+
+            }
+            MainViewModel.State.Loaded -> {
+
+            }
+            MainViewModel.State.Loading -> {
+
+            }
+        }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    private fun handleSideEffects(sideEffect: MainViewModel.SideEffect) {
+        when (sideEffect) {
+            MainViewModel.SideEffect.NavigateToDetails -> {
+                val intent = Intent(this, GithubActivity::class.java)
+                startActivity(intent)
+                finish()
+            }
+            is MainViewModel.SideEffect.OpenLoginPage -> {
+                getAuthResponse.launch(sideEffect.intent)
+            }
+        }
+    }
 
-        service.dispose()
+    private fun handleAuthResponseIntent(intent: Intent) {
+        val exception = AuthorizationException.fromIntent(intent)
+        val tokenExchangeRequest = AuthorizationResponse.fromIntent(intent)
+            ?.createTokenExchangeRequest()
+        when {
+            exception != null -> viewModel.onAuthCodeFailed(exception)
+            tokenExchangeRequest != null ->
+                viewModel.onAuthCodeReceived(tokenExchangeRequest)
+        }
     }
 }

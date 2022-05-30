@@ -1,5 +1,6 @@
 package com.lookout.data.di
 
+import com.lookout.data.interseptors.AuthorizationFailedInterceptor
 import com.lookout.data.interseptors.AuthorizationInterceptor
 import dagger.Module
 import dagger.Provides
@@ -18,7 +19,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        authInterceptor: AuthorizationInterceptor
+        authInterceptor: AuthorizationInterceptor,
+        authFailedInterceptor: AuthorizationFailedInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(
@@ -27,6 +29,7 @@ object NetworkModule {
                 }
             )
             .addInterceptor(authInterceptor)
+            .addInterceptor(authFailedInterceptor)
             .build()
     }
 

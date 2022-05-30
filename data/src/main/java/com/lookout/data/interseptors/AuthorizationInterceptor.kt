@@ -9,6 +9,7 @@ import javax.inject.Inject
 class AuthorizationInterceptor @Inject constructor(
     private val preferences: Preferences
 ) : Interceptor {
+
     override fun intercept(chain: Interceptor.Chain): Response {
         return chain.request()
             .addTokenHeader()
@@ -16,16 +17,20 @@ class AuthorizationInterceptor @Inject constructor(
     }
 
     private fun Request.addTokenHeader(): Request {
-        val authHeaderName = "Authorization"
         return newBuilder()
             .apply {
                 val token = preferences.accessToken
                 if (token != null) {
-                    header(authHeaderName, token.withBearer())
+                    header(AUTHORIZATION_HEADER, token.withBearer())
                 }
             }
             .build()
     }
 
     private fun String.withBearer() = "Bearer $this"
+
+    companion object{
+
+        const val AUTHORIZATION_HEADER = "Authorization"
+    }
 }

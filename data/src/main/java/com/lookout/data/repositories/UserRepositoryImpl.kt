@@ -4,21 +4,12 @@ import com.lookout.data.api.GithubApi
 import com.lookout.data.local.Preferences
 import com.lookout.data.models.toDomain
 import com.lookout.domain.models.GithubUser
-import com.lookout.domain.repositories.GithubRepository
+import com.lookout.domain.repositories.UserRepository
 import javax.inject.Inject
 
-class GitHubRepositoryImpl @Inject constructor(
-    private val preferences: Preferences,
+class UserRepositoryImpl @Inject constructor(
     private val gitHubService: GithubApi
-) : GithubRepository {
-
-    override fun addGithubToken(token: String) {
-        preferences.accessToken = token
-    }
-
-    override fun clearGithubToken() {
-        preferences.accessToken = null
-    }
+) : UserRepository {
 
     override suspend fun getUserInfo(): GithubUser {
         return gitHubService.getCurrentUser().toDomain()
