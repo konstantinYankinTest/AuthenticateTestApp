@@ -1,20 +1,20 @@
 package com.lookout.data.models
 
+import com.google.gson.annotations.SerializedName
 import com.lookout.domain.models.GithubUser
-import com.squareup.moshi.JsonClass
 
-@JsonClass(generateAdapter = true)
+
 data class GitHubUserDTO(
-    val avatar_url: String,
-    val followers: Int,
-    val following: Int,
-    val id: Int,
-    val login: String,
-    val owned_private_repos: Int,
-    val private_gists: Int,
-    val public_gists: Int,
-    val public_repos: Int,
-    val total_private_repos: Int
+    @SerializedName("avatar_url") val avatar_url: String,
+    @SerializedName("followers") val followers: Int,
+    @SerializedName("following") val following: Int,
+    @SerializedName("id") val id: Int,
+    @SerializedName("login") val login: String,
+    @SerializedName("owned_private_repos") val owned_private_repos: Int,
+    @SerializedName("private_gists") val private_gists: Int,
+    @SerializedName("public_gists") val public_gists: Int,
+    @SerializedName("public_repos") val public_repos: Int,
+    @SerializedName("total_private_repos") val total_private_repos: Int
 )
 
 fun GitHubUserDTO.toDomain(): GithubUser =

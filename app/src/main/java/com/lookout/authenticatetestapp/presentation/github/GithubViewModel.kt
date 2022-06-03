@@ -8,10 +8,12 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.lookout.data.AccessToken
 import com.lookout.domain.models.GithubUser
 import com.lookout.domain.usecases.GetEndSessionRequestUseCase
 import com.lookout.domain.usecases.GetUserInfoUseCase
 import com.lookout.domain.usecases.LogoutUseCase
+import com.lookout.domain.usecases.UpdateAccessTokenUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -24,10 +26,12 @@ class GithubViewModel @Inject constructor(
     application: Application,
     private val getUserInfoUseCase: GetUserInfoUseCase,
     private val logoutUseCase: LogoutUseCase,
-    private val getEndSessionRequestUseCase: GetEndSessionRequestUseCase
+    private val getEndSessionRequestUseCase: GetEndSessionRequestUseCase,
+    private val updateAccessTokenUseCase: UpdateAccessTokenUseCase
 ) : AndroidViewModel(application) {
 
-    @Inject lateinit var authService: AuthorizationService
+    @Inject
+    lateinit var authService: AuthorizationService
 
     private val _state: MutableState<UiState> = mutableStateOf(UiState.Empty)
     val state: State<UiState> = _state
@@ -35,9 +39,8 @@ class GithubViewModel @Inject constructor(
     private val _sideEffects = MutableSharedFlow<SideEffect>()
     val sideEffects: SharedFlow<SideEffect> = _sideEffects
 
-
     init {
-        loadUserInfo()
+        isAccessTokenExist()
     }
 
     fun logout() {
@@ -59,15 +62,35 @@ class GithubViewModel @Inject constructor(
         }
     }
 
-    private fun loadUserInfo() {
+    fun updateTokens(){
         viewModelScope.launch {
             runCatching {
-                getUserInfoUseCase()
+                updateAccessTokenUseCase(authService)
             }.onSuccess {
-                _state.value = UiState.Loaded(it)
+                _state.value = UiState.ReadyForRequest
             }.onFailure {
                 _state.value = UiState.Error(it.message.orEmpty())
             }
+        }
+    }
+
+    fun loadUserInfo() {
+            viewModelScope.launch {
+                runCatching {
+                    getUserInfoUseCase()
+                }.onSuccess {
+                    _state.value = UiState.Loaded(it)
+                }.onFailure {
+                    _state.value = UiState.Error(it.message.orEmpty())
+                }
+            }
+    }
+
+    private fun isAccessTokenExist() {
+        if (AccessToken.accessToken != null) {
+            _state.value = UiState.ReadyForRequest
+        } else {
+            _state.value = UiState.UpdateToken
         }
     }
 
@@ -80,9 +103,12 @@ class GithubViewModel @Inject constructor(
     sealed class UiState {
         object Empty : UiState()
         object Loading : UiState()
+        object UpdateToken : UiState()
+        object ReadyForRequest : UiState()
         data class Loaded(
             val user: GithubUser
         ) : UiState()
+
         data class Error(val message: String) : UiState()
     }
 

@@ -1,6 +1,7 @@
 package com.lookout.data.interseptors
 
 import android.util.Log
+import com.lookout.data.AccessToken
 import com.lookout.data.auth.AppAuth
 import com.lookout.data.interseptors.AuthorizationInterceptor.Companion.AUTHORIZATION_HEADER
 import com.lookout.data.local.Preferences
@@ -82,7 +83,7 @@ class AuthorizationFailedInterceptor @Inject constructor(
             }
                 .getOrNull()
                 ?.let {
-                    preferences.accessToken = it.accessToken
+                    AccessToken.accessToken = it.accessToken
                     preferences.refreshToken = it.refreshToken
                     preferences.idToken = it.idToken
                     true
@@ -107,7 +108,7 @@ class AuthorizationFailedInterceptor @Inject constructor(
 
     private fun updateOriginalCallWithNewToken(
         request: Request
-    ): Request = preferences.accessToken?.let { newAccessToken ->
+    ): Request = AccessToken.accessToken?.let { newAccessToken ->
         request
             .newBuilder()
             .header(AUTHORIZATION_HEADER, newAccessToken)

@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.lookout.data.AccessToken
+import com.lookout.data.local.Preferences
 import com.lookout.domain.usecases.AuthGithubUseCase
 import com.lookout.domain.usecases.GetAuthRequestUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,10 +24,12 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     application: Application,
     private val saveGitHubTokenUseCase: AuthGithubUseCase,
-    private val getAuthRequestUseCase: GetAuthRequestUseCase
+    private val getAuthRequestUseCase: GetAuthRequestUseCase,
+    private val preferences: Preferences
 ) : AndroidViewModel(application) {
 
-    @Inject lateinit var authService: AuthorizationService
+    @Inject
+    lateinit var authService: AuthorizationService
 
     private val _state = MutableStateFlow<State>(State.Empty)
     val state: StateFlow<State> = _state
@@ -55,15 +59,24 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun openLoginPage() {
+    fun start() {
         viewModelScope.launch {
+            if (AccessToken.accessToken != null || preferences.refreshToken != null) {
+                _sideEffects.emit(SideEffect.NavigateToDetails)
+            } else {
+                openLoginPage()
+            }
+        }
+
+    }
+
+    private suspend fun openLoginPage() {
             val customTabsIntent = CustomTabsIntent.Builder().build()
             val openAuthPageIntent = authService.getAuthorizationRequestIntent(
                 getAuthRequestUseCase(),
                 customTabsIntent
             )
             _sideEffects.emit(SideEffect.OpenLoginPage(openAuthPageIntent))
-        }
     }
 
     override fun onCleared() {

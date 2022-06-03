@@ -74,4 +74,7 @@ dependencies {
 
     // coil
     implementation "io.coil-kt:coil-compose:2.0.0-rc02"
+
+    // biometric
+    implementation "androidx.biometric:biometric:1.1.0"
 }

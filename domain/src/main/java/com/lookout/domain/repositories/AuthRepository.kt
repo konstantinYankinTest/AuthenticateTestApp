@@ -14,4 +14,6 @@ interface AuthRepository {
     fun getEndSessionRequest(): EndSessionRequest
 
     suspend fun performTokenRequest(authService: AuthorizationService, tokenRequest: TokenRequest)
+
+    suspend fun refreshTokens(authService: AuthorizationService)
 }

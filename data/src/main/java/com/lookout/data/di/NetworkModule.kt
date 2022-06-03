@@ -1,7 +1,10 @@
 package com.lookout.data.di
 
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.lookout.data.interseptors.AuthorizationFailedInterceptor
 import com.lookout.data.interseptors.AuthorizationInterceptor
+import com.squareup.moshi.Json
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -9,7 +12,7 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
+import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
 @Module
@@ -17,9 +20,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     @Provides
-    @Singleton
     fun provideOkHttpClient(
-        authInterceptor: AuthorizationInterceptor,
         authFailedInterceptor: AuthorizationFailedInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
@@ -28,17 +29,23 @@ object NetworkModule {
                     level = HttpLoggingInterceptor.Level.BODY
                 }
             )
-            .addInterceptor(authInterceptor)
+            .addInterceptor(AuthorizationInterceptor())
             .addInterceptor(authFailedInterceptor)
             .build()
     }
 
     @Provides
+    fun provideGson(): Gson = GsonBuilder().create()
+
+    @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    fun provideRetrofit(
+        okHttpClient: OkHttpClient,
+        gson: Gson
+    ): Retrofit {
         return Retrofit.Builder()
             .baseUrl("https://api.github.com/")
-            .addConverterFactory(MoshiConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .client(okHttpClient)
             .build()
     }

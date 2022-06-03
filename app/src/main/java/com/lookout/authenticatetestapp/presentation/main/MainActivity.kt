@@ -54,9 +54,9 @@ class MainActivity : ComponentActivity() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
-                            onClick = { viewModel.openLoginPage() }
+                            onClick = { viewModel.start() }
                         ) {
-                            Text(text = "Login with Github")
+                            Text(text = "Start")
                         }
                     }
                 }

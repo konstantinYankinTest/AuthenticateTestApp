@@ -53,6 +53,21 @@ object AppAuth {
             .build()
     }
 
+    fun getAuthorizationRequest(authCode: String?): TokenRequest{
+        val request =  TokenRequest.Builder(
+            serviceConfiguration,
+            AuthConfig.CLIENT_ID
+        )
+            .setGrantType(GrantTypeValues.AUTHORIZATION_CODE)
+            .setScopes(AuthConfig.SCOPE)
+            .setClientId(AuthConfig.CLIENT_ID)
+            .setRedirectUri(AuthConfig.CALLBACK_URL.toUri())
+            .setAuthorizationCode(authCode)
+            .build()
+
+        return request
+    }
+
     suspend fun performTokenRequestSuspend(
         authService: AuthorizationService,
         tokenRequest: TokenRequest,
@@ -86,8 +101,8 @@ object AppAuth {
         const val END_SESSION_URI = "https://github.com/logout"
         const val RESPONSE_TYPE = ResponseTypeValues.CODE
         const val SCOPE = "user,repo"
-        const val CLIENT_ID = "356d226097b57bf27c50"
-        const val CLIENT_SECRET = "7f42da12bfa134c948d35246f271f91795d80f87"
+        const val CLIENT_ID = "Iv1.7bbef208d72b5593"
+        const val CLIENT_SECRET = "e890aa3683f34d55b8944e8d355c760df07bab3b"
         const val CALLBACK_URL = "authenticatetestapp://lookout.callback"
         const val LOGOUT_CALLBACK_URL = "authenticatetestapp://lookout.logout_callback"
     }

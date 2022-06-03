@@ -1,5 +1,6 @@
 package com.lookout.data.repositories
 
+import com.lookout.data.AccessToken
 import com.lookout.data.auth.AppAuth
 import com.lookout.data.local.Preferences
 import com.lookout.domain.repositories.AuthRepository
@@ -14,7 +15,7 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     override fun logout() {
-        preferences.accessToken = null
+        AccessToken.accessToken = null
         preferences.refreshToken = null
         preferences.idToken = null
     }
@@ -32,8 +33,16 @@ class AuthRepositoryImpl @Inject constructor(
         tokenRequest: TokenRequest
     ) {
         val tokens = AppAuth.performTokenRequestSuspend(authService, tokenRequest)
-        preferences.accessToken = tokens.accessToken
         preferences.refreshToken = tokens.refreshToken
         preferences.idToken = tokens.idToken
+        AccessToken.accessToken = tokens.accessToken
+    }
+
+    override suspend fun refreshTokens(authService: AuthorizationService) {
+        val tokenRequest = AppAuth.getRefreshTokenRequest(preferences.refreshToken.orEmpty())
+        val tokens = AppAuth.performTokenRequestSuspend(authService, tokenRequest)
+        preferences.refreshToken = tokens.refreshToken
+        preferences.idToken = tokens.idToken
+        AccessToken.accessToken = tokens.accessToken
     }
 }
