@@ -3,6 +3,9 @@ package com.lookout.authenticatetestapp.presentation.main
 import android.app.Application
 import android.content.Intent
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.lookout.data.AccessToken
@@ -10,10 +13,6 @@ import com.lookout.data.local.Preferences
 import com.lookout.domain.usecases.AuthGithubUseCase
 import com.lookout.domain.usecases.GetAuthRequestUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationService
@@ -31,12 +30,8 @@ class MainViewModel @Inject constructor(
     @Inject
     lateinit var authService: AuthorizationService
 
-    private val _state = MutableStateFlow<State>(State.Empty)
-    val state: StateFlow<State> = _state
-
-    private val _sideEffects = MutableSharedFlow<SideEffect>()
-    val sideEffects: SharedFlow<SideEffect> = _sideEffects
-
+    private val _state: MutableState<UiState> = mutableStateOf(UiState.Empty)
+    val state: State<UiState> = _state
 
     fun onAuthCodeReceived(tokenRequest: TokenRequest) {
         viewModelScope.launch {
@@ -46,37 +41,32 @@ class MainViewModel @Inject constructor(
                     tokenRequest = tokenRequest
                 )
             }.onSuccess {
-                _sideEffects.emit(SideEffect.NavigateToDetails)
+                _state.value = UiState.Loaded
             }.onFailure {
-                _state.emit(State.Error(it.message.orEmpty()))
+                _state.value = UiState.Error(it.message.orEmpty())
             }
         }
     }
 
     fun onAuthCodeFailed(exception: AuthorizationException) {
-        viewModelScope.launch {
-            _state.emit(State.Error(exception.message.orEmpty()))
-        }
+        _state.value = UiState.Error(exception.message.orEmpty())
     }
 
     fun start() {
-        viewModelScope.launch {
-            if (AccessToken.accessToken != null || preferences.refreshToken != null) {
-                _sideEffects.emit(SideEffect.NavigateToDetails)
-            } else {
-                openLoginPage()
-            }
+        if (AccessToken.accessToken != null || preferences.refreshToken != null) {
+            _state.value = UiState.Loaded
+        } else {
+            openLoginPage()
         }
-
     }
 
-    private suspend fun openLoginPage() {
-            val customTabsIntent = CustomTabsIntent.Builder().build()
-            val openAuthPageIntent = authService.getAuthorizationRequestIntent(
-                getAuthRequestUseCase(),
-                customTabsIntent
-            )
-            _sideEffects.emit(SideEffect.OpenLoginPage(openAuthPageIntent))
+    private fun openLoginPage() {
+        val customTabsIntent = CustomTabsIntent.Builder().build()
+        val openAuthPageIntent = authService.getAuthorizationRequestIntent(
+            getAuthRequestUseCase(),
+            customTabsIntent
+        )
+        _state.value = UiState.OpenLoginPage(openAuthPageIntent)
     }
 
     override fun onCleared() {
@@ -85,16 +75,12 @@ class MainViewModel @Inject constructor(
         authService.dispose()
     }
 
-    sealed class State {
-        object Empty : State()
-        object Loading : State()
-        object Loaded : State()
-        data class Error(val message: String) : State()
-    }
-
-    sealed class SideEffect {
-        data class OpenLoginPage(val intent: Intent) : SideEffect()
-        object NavigateToDetails : SideEffect()
+    sealed class UiState {
+        object Empty : UiState()
+        object Loading : UiState()
+        object Loaded : UiState()
+        data class Error(val message: String) : UiState()
+        data class OpenLoginPage(val intent: Intent) : UiState()
     }
 }
 

@@ -2,4 +2,8 @@
     <string name="app_name">Authenticate Test App</string>
 
     <string name="pin_biometric_error">Authentication failed: %1$s</string>
+
+    <string name="error_general">Something went wrong</string>
+
+    <string name="action_refresh">Refresh</string>
 </resources>

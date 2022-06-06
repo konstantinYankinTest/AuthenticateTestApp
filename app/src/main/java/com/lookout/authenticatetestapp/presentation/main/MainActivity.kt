@@ -6,21 +6,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import com.lookout.authenticatetestapp.extention.launchWhenStarted
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import com.lookout.authenticatetestapp.presentation.github.GithubActivity
+import com.lookout.authenticatetestapp.presentation.main.views.MainButtonView
+import com.lookout.authenticatetestapp.presentation.main.views.MainViewLoading
+import com.lookout.authenticatetestapp.presentation.views.ErrorView
 import com.lookout.authenticatetestapp.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.onEach
-import net.openid.appauth.*
+import net.openid.appauth.AuthorizationException
+import net.openid.appauth.AuthorizationResponse
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -35,62 +33,35 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        viewModel.sideEffects
-            .onEach(::handleSideEffects)
-            .launchWhenStarted(this)
-
-        viewModel.state
-            .onEach(::handleViewState)
-            .launchWhenStarted(this)
-
         setContent {
             AppTheme {
                 Surface(
                     color = MaterialTheme.colors.background
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = { viewModel.start() }
-                        ) {
-                            Text(text = "Start")
-                        }
-                    }
+                    MainScreen()
                 }
             }
         }
     }
 
-    private fun handleViewState(state: MainViewModel.State) {
-        when (state) {
-            MainViewModel.State.Empty -> {
+    @Composable
+    fun MainScreen() {
+        val viewState by remember { viewModel.state }
+        when (val state = viewState) {
 
-            }
-            is MainViewModel.State.Error -> {
+            MainViewModel.UiState.Empty -> MainButtonView(onButtonClick = { viewModel.start() })
 
-            }
-            MainViewModel.State.Loaded -> {
+            is MainViewModel.UiState.Error -> ErrorView(onReloadClick = { viewModel.start() })
 
-            }
-            MainViewModel.State.Loading -> {
-
-            }
-        }
-    }
-
-    private fun handleSideEffects(sideEffect: MainViewModel.SideEffect) {
-        when (sideEffect) {
-            MainViewModel.SideEffect.NavigateToDetails -> {
+            MainViewModel.UiState.Loaded -> {
                 val intent = Intent(this, GithubActivity::class.java)
                 startActivity(intent)
                 finish()
             }
-            is MainViewModel.SideEffect.OpenLoginPage -> {
-                getAuthResponse.launch(sideEffect.intent)
-            }
+            MainViewModel.UiState.Loading -> MainViewLoading()
+
+            is MainViewModel.UiState.OpenLoginPage -> getAuthResponse.launch(state.intent)
+
         }
     }
 

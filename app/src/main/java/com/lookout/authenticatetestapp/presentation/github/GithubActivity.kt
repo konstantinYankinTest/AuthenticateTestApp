@@ -7,24 +7,17 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.activity.viewModels
 import androidx.biometric.BiometricPrompt
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.Button
 import androidx.compose.material.Surface
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
-import coil.compose.AsyncImage
 import com.lookout.authenticatetestapp.R
 import com.lookout.authenticatetestapp.extention.launchWhenStarted
+import com.lookout.authenticatetestapp.presentation.github.views.GithubProfileView
+import com.lookout.authenticatetestapp.presentation.github.views.GithubViewLoading
 import com.lookout.authenticatetestapp.presentation.main.MainActivity
+import com.lookout.authenticatetestapp.presentation.views.ErrorView
 import com.lookout.authenticatetestapp.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.onEach
@@ -48,77 +41,32 @@ class GithubActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        viewModel.sideEffects
-            .onEach(::handleSideEffects)
-            .launchWhenStarted(this)
-
         setContent {
             AppTheme {
                 Surface {
-                    ShowGithubProfile()
+                    GithubProfileScreen()
                 }
             }
         }
     }
 
     @Composable
-    private fun ShowGithubProfile() {
-        val state by remember { viewModel.state }
-        HandleViewState(state)
-    }
-
-    @Composable
-    private fun HandleViewState(state: GithubViewModel.UiState) {
-        when (state) {
+    private fun GithubProfileScreen() {
+        val viewState by remember { viewModel.state }
+        when (val state = viewState) {
             GithubViewModel.UiState.Empty -> {
 
             }
             is GithubViewModel.UiState.Error -> {
-
+                ErrorView(onReloadClick = { viewModel.checkEnableAccessToken() })
             }
             is GithubViewModel.UiState.Loaded -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    AsyncImage(
-                        model = state.user.image,
-                        contentDescription = "Profile image",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.clip(CircleShape)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = "Name: ${state.user.name}")
-
-                    Row {
-                        Text(text = "Repos: ${state.user.repos}")
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(text = "Gists: ${state.user.gists}")
-                    }
-
-                    Row {
-                        Text(text = "Followers: ${state.user.followers}")
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(text = "Following: ${state.user.following}")
-                    }
-                    Spacer(modifier = Modifier.height(32.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = {
-                                viewModel.logout()
-                            }
-                        ) {
-                            Text(text = "Sing out Github")
-                        }
-                    }
-                }
+                GithubProfileView(
+                    user = state.user,
+                    onLogoutClicked = { viewModel.logout() })
             }
             GithubViewModel.UiState.Loading -> {
-
+                GithubViewLoading()
             }
             GithubViewModel.UiState.UpdateToken -> {
                 showBiometricPrompt()
@@ -126,18 +74,13 @@ class GithubActivity : FragmentActivity() {
             GithubViewModel.UiState.ReadyForRequest -> {
                 viewModel.loadUserInfo()
             }
-        }
-    }
-
-    private fun handleSideEffects(sideEffect: GithubViewModel.SideEffect) {
-        when (sideEffect) {
-            GithubViewModel.SideEffect.CloseGithubActivity -> {
+            GithubViewModel.UiState.CloseGithubActivity -> {
                 val intent = Intent(this, MainActivity::class.java)
                 startActivity(intent)
                 finish()
             }
-            is GithubViewModel.SideEffect.OpenLogout -> {
-                logoutResponse.launch(sideEffect.intent)
+            is GithubViewModel.UiState.OpenLogout -> {
+                logoutResponse.launch(state.intent)
             }
         }
     }

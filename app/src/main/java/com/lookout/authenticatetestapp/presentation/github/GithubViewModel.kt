@@ -15,8 +15,6 @@ import com.lookout.domain.usecases.GetUserInfoUseCase
 import com.lookout.domain.usecases.LogoutUseCase
 import com.lookout.domain.usecases.UpdateAccessTokenUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import net.openid.appauth.AuthorizationService
 import javax.inject.Inject
@@ -36,33 +34,25 @@ class GithubViewModel @Inject constructor(
     private val _state: MutableState<UiState> = mutableStateOf(UiState.Empty)
     val state: State<UiState> = _state
 
-    private val _sideEffects = MutableSharedFlow<SideEffect>()
-    val sideEffects: SharedFlow<SideEffect> = _sideEffects
-
     init {
-        isAccessTokenExist()
+        checkEnableAccessToken()
     }
 
     fun logout() {
-        viewModelScope.launch {
-            val customTabsIntent = CustomTabsIntent.Builder().build()
-
-            val logoutPageIntent = authService.getEndSessionRequestIntent(
-                getEndSessionRequestUseCase(),
-                customTabsIntent
-            )
-            _sideEffects.emit(SideEffect.OpenLogout(logoutPageIntent))
-        }
+        val customTabsIntent = CustomTabsIntent.Builder().build()
+        val logoutPageIntent = authService.getEndSessionRequestIntent(
+            getEndSessionRequestUseCase(),
+            customTabsIntent
+        )
+        _state.value = UiState.OpenLogout(logoutPageIntent)
     }
 
     fun webLogoutComplete() {
-        viewModelScope.launch {
-            logoutUseCase()
-            _sideEffects.emit(SideEffect.CloseGithubActivity)
-        }
+        logoutUseCase()
+        _state.value = UiState.CloseGithubActivity
     }
 
-    fun updateTokens(){
+    fun updateTokens() {
         viewModelScope.launch {
             runCatching {
                 updateAccessTokenUseCase(authService)
@@ -75,18 +65,19 @@ class GithubViewModel @Inject constructor(
     }
 
     fun loadUserInfo() {
-            viewModelScope.launch {
-                runCatching {
-                    getUserInfoUseCase()
-                }.onSuccess {
-                    _state.value = UiState.Loaded(it)
-                }.onFailure {
-                    _state.value = UiState.Error(it.message.orEmpty())
-                }
+        viewModelScope.launch {
+            _state.value = UiState.Loading
+            runCatching {
+                getUserInfoUseCase()
+            }.onSuccess {
+                _state.value = UiState.Loaded(it)
+            }.onFailure {
+                _state.value = UiState.Error(it.message.orEmpty())
             }
+        }
     }
 
-    private fun isAccessTokenExist() {
+    fun checkEnableAccessToken() {
         if (AccessToken.accessToken != null) {
             _state.value = UiState.ReadyForRequest
         } else {
@@ -110,10 +101,7 @@ class GithubViewModel @Inject constructor(
         ) : UiState()
 
         data class Error(val message: String) : UiState()
-    }
-
-    sealed class SideEffect {
-        data class OpenLogout(val intent: Intent) : SideEffect()
-        object CloseGithubActivity : SideEffect()
+        data class OpenLogout(val intent: Intent) : UiState()
+        object CloseGithubActivity : UiState()
     }
 }
