@@ -13,14 +13,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.fragment.app.FragmentActivity
 import com.lookout.authenticatetestapp.R
-import com.lookout.authenticatetestapp.extention.launchWhenStarted
 import com.lookout.authenticatetestapp.presentation.github.views.GithubProfileView
 import com.lookout.authenticatetestapp.presentation.github.views.GithubViewLoading
 import com.lookout.authenticatetestapp.presentation.main.MainActivity
 import com.lookout.authenticatetestapp.presentation.views.ErrorView
 import com.lookout.authenticatetestapp.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.onEach
 
 private val biometricsIgnoredErrors = listOf(
     BiometricPrompt.ERROR_NEGATIVE_BUTTON,
