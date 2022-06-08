@@ -77,4 +77,7 @@ dependencies {
 
     // biometric
     implementation "androidx.biometric:biometric:1.1.0"
+
+    //custom tabs
+    implementation "androidx.browser:browser:1.4.0"
 }
