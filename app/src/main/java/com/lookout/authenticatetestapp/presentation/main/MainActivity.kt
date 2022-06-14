@@ -3,7 +3,6 @@ package com.lookout.authenticatetestapp.presentation.main
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.activity.viewModels
 import androidx.biometric.BiometricPrompt
 import androidx.compose.material.MaterialTheme
@@ -15,11 +14,13 @@ import androidx.fragment.app.FragmentActivity
 import com.lookout.authenticatetestapp.R
 import com.lookout.authenticatetestapp.presentation.github.views.GithubProfileView
 import com.lookout.authenticatetestapp.presentation.main.MainViewModel.UiState.*
+import com.lookout.authenticatetestapp.presentation.main.views.AndroidWebView
 import com.lookout.authenticatetestapp.presentation.main.views.MainButtonView
 import com.lookout.authenticatetestapp.presentation.main.views.MainViewLoading
 import com.lookout.authenticatetestapp.presentation.views.ErrorView
 import com.lookout.authenticatetestapp.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
+
 
 private val biometricsIgnoredErrors = listOf(
     BiometricPrompt.ERROR_NEGATIVE_BUTTON,
@@ -32,15 +33,6 @@ private val biometricsIgnoredErrors = listOf(
 class MainActivity : FragmentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
-
-    private val getAuthResponse = registerForActivityResult(StartActivityForResult()) {
-        val dataIntent = it.data ?: return@registerForActivityResult
-        viewModel.handleAuthResponseIntent(dataIntent)
-    }
-
-    private val logoutResponse = registerForActivityResult(StartActivityForResult()) {
-        viewModel.webLogoutComplete()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,17 +63,20 @@ class MainActivity : FragmentActivity() {
             is Error -> ErrorView(onReloadClick = { })
 
             is OpenLoginPage -> {
-                MainViewLoading()
-                getAuthResponse.launch(state.intent)
+                AndroidWebView(
+                    url = state.url,
+                    onAuthCodeReceived = { url -> viewModel.onAuthCodeReceived(url) })
             }
 
             is OpenLogout -> {
-                MainViewLoading()
-                logoutResponse.launch(state.intent)
+                AndroidWebView(url = state.url,
+                    onWebLogoutCompleted = { viewModel.webLogoutComplete() })
             }
 
             is ShowProfile -> {
-                GithubProfileView(user = state.user, onLogoutClicked = { viewModel.openLogoutPage() })
+                GithubProfileView(
+                    user = state.user,
+                    onLogoutClicked = { viewModel.openLogoutPage() })
             }
         }
     }

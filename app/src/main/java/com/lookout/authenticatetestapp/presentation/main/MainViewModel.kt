@@ -1,42 +1,31 @@
 package com.lookout.authenticatetestapp.presentation.main
 
 import android.app.Application
-import android.content.Intent
-import androidx.browser.customtabs.CustomTabColorSchemeParams
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.browser.customtabs.TrustedWebUtils
+import android.net.Uri
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.lookout.authenticatetestapp.R
 import com.lookout.data.AccessToken
 import com.lookout.data.local.Preferences
 import com.lookout.domain.models.GithubUser
 import com.lookout.domain.usecases.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import net.openid.appauth.AuthorizationException
-import net.openid.appauth.AuthorizationResponse
-import net.openid.appauth.AuthorizationService
-import net.openid.appauth.TokenRequest
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     application: Application,
     private val saveGitHubTokenUseCase: AuthGithubUseCase,
-    private val getAuthRequestUseCase: GetAuthRequestUseCase,
+    private val getAuthUrlUseCase: GetAuthUrlUseCase,
     private val preferences: Preferences,
     private val getUserInfoUseCase: GetUserInfoUseCase,
     private val logoutUseCase: LogoutUseCase,
-    private val getEndSessionRequestUseCase: GetEndSessionRequestUseCase,
+    private val getEndSessionUrlUseCase: GetEndSessionUrlUseCase,
     private val updateAccessTokenUseCase: UpdateAccessTokenUseCase
 ) : AndroidViewModel(application) {
-
-    @Inject
-    lateinit var authService: AuthorizationService
 
     private val _state: MutableState<UiState> = mutableStateOf(UiState.Empty)
     val state: State<UiState> = _state
@@ -45,39 +34,12 @@ class MainViewModel @Inject constructor(
         checkEnableAccessToken()
     }
 
-    override fun onCleared() {
-        super.onCleared()
-
-        authService.dispose()
-    }
-
-    fun handleAuthResponseIntent(intent: Intent) {
-        val exception = AuthorizationException.fromIntent(intent)
-        val tokenExchangeRequest = AuthorizationResponse.fromIntent(intent)
-            ?.createTokenExchangeRequest()
-        when {
-            exception != null -> onAuthCodeFailed(exception)
-            tokenExchangeRequest != null -> onAuthCodeReceived(tokenExchangeRequest)
-        }
-    }
-
     fun openLoginPage() {
-        val customTabsIntent = authService.createCustomTabsIntentBuilder().build().apply {
-            intent.putExtra(TrustedWebUtils.EXTRA_LAUNCH_AS_TRUSTED_WEB_ACTIVITY, true)
-        }
-        val openAuthPageIntent = authService.getAuthorizationRequestIntent(
-            getAuthRequestUseCase(),
-            customTabsIntent
-        )
-        _state.value = UiState.OpenLoginPage(openAuthPageIntent)
+        _state.value = UiState.OpenLoginPage(getAuthUrlUseCase())
     }
 
     fun openLogoutPage() {
-        val logoutPageIntent = authService.getEndSessionRequestIntent(
-            getEndSessionRequestUseCase(),
-            getCustomTabIntent()
-        )
-        _state.value = UiState.OpenLogout(logoutPageIntent)
+        _state.value = UiState.OpenLogout(getEndSessionUrlUseCase())
     }
 
     fun webLogoutComplete() {
@@ -89,7 +51,22 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = UiState.Loading
             runCatching {
-                updateAccessTokenUseCase(authService)
+                updateAccessTokenUseCase()
+            }.onSuccess {
+                loadUserInfo()
+            }.onFailure {
+                _state.value = UiState.Error(it.message.orEmpty())
+            }
+        }
+    }
+
+    fun onAuthCodeReceived(url: String) {
+        val uri = Uri.parse(url)
+        val githubCode = uri.getQueryParameter("code") ?: ""
+        viewModelScope.launch {
+            _state.value = UiState.Loading
+            runCatching {
+                saveGitHubTokenUseCase(githubCode)
             }.onSuccess {
                 loadUserInfo()
             }.onFailure {
@@ -106,37 +83,6 @@ class MainViewModel @Inject constructor(
         } else {
             _state.value = UiState.ShowBiometricDialog
         }
-    }
-
-    private fun onAuthCodeReceived(tokenRequest: TokenRequest) {
-        viewModelScope.launch {
-            _state.value = UiState.Loading
-            runCatching {
-                saveGitHubTokenUseCase(
-                    authService = authService,
-                    tokenRequest = tokenRequest
-                )
-            }.onSuccess {
-                loadUserInfo()
-            }.onFailure {
-                _state.value = UiState.Error(it.message.orEmpty())
-            }
-        }
-    }
-
-    private fun onAuthCodeFailed(exception: AuthorizationException) {
-        _state.value = UiState.Error(exception.message.orEmpty())
-    }
-
-    private fun getCustomTabIntent(): CustomTabsIntent {
-        val colorSchemeParams = CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(R.color.mainColor)
-            .build()
-        return CustomTabsIntent.Builder()
-            .setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_LIGHT, colorSchemeParams)
-            .setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_DARK, colorSchemeParams)
-            .setShowTitle(true)
-            .build()
     }
 
     private fun loadUserInfo() {
@@ -160,8 +106,8 @@ class MainViewModel @Inject constructor(
 
         data class ShowProfile(val user: GithubUser) : UiState()
         data class Error(val message: String) : UiState()
-        data class OpenLogout(val intent: Intent) : UiState()
-        data class OpenLoginPage(val intent: Intent) : UiState()
+        data class OpenLogout(val url: String) : UiState()
+        data class OpenLoginPage(val url: String) : UiState()
     }
 }
 

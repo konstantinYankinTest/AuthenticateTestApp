@@ -1,19 +1,14 @@
 package com.lookout.domain.repositories
 
-import net.openid.appauth.AuthorizationRequest
-import net.openid.appauth.AuthorizationService
-import net.openid.appauth.EndSessionRequest
-import net.openid.appauth.TokenRequest
-
 interface AuthRepository {
 
     fun logout()
 
-    fun getAuthRequest(): AuthorizationRequest
+    fun getAuthUrl(): String
 
-    fun getEndSessionRequest(): EndSessionRequest
+    fun getEndSessionUrl(): String
 
-    suspend fun performTokenRequest(authService: AuthorizationService, tokenRequest: TokenRequest)
+    suspend fun performTokenRequest(code: String)
 
-    suspend fun refreshTokens(authService: AuthorizationService)
+    suspend fun refreshTokens()
 }

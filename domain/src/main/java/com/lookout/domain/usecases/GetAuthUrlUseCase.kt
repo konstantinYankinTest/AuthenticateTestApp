@@ -3,8 +3,8 @@ package com.lookout.domain.usecases
 import com.lookout.domain.repositories.AuthRepository
 import javax.inject.Inject
 
-class GetAuthRequestUseCase @Inject constructor(
+class GetAuthUrlUseCase @Inject constructor(
     private val authRepository: AuthRepository
 ) {
-    operator fun invoke() = authRepository.getAuthRequest()
+    operator fun invoke() = authRepository.getAuthUrl()
 }

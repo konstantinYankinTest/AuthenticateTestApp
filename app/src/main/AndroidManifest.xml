@@ -24,10 +24,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".presentation.github.GithubActivity"
-            android:exported="false"
-            android:theme="@style/Theme.AuthenticateTestApp.NoActionBar"/>
-        <activity
             android:name="net.openid.appauth.RedirectUriReceiverActivity"
             android:exported="true"
             tools:node="replace">

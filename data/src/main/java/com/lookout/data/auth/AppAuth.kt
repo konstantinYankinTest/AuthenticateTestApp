@@ -1,105 +1,107 @@
 package com.lookout.data.auth
 
-import android.net.Uri
-import androidx.core.net.toUri
 import com.lookout.data.models.TokensModel
-import net.openid.appauth.AuthorizationRequest
-import net.openid.appauth.AuthorizationService
-import net.openid.appauth.AuthorizationServiceConfiguration
-import net.openid.appauth.ClientAuthentication
-import net.openid.appauth.ClientSecretPost
-import net.openid.appauth.EndSessionRequest
-import net.openid.appauth.GrantTypeValues
-import net.openid.appauth.ResponseTypeValues
-import net.openid.appauth.TokenRequest
-import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import org.json.JSONTokener
+import java.io.OutputStreamWriter
+import java.net.URL
+import java.util.concurrent.TimeUnit
+import javax.net.ssl.HttpsURLConnection
 
 object AppAuth {
 
-    private val serviceConfiguration = AuthorizationServiceConfiguration(
-        Uri.parse(AuthConfig.AUTH_URI),
-        Uri.parse(AuthConfig.TOKEN_URI),
-        null,
-        Uri.parse(AuthConfig.END_SESSION_URI)
-    )
+    private val state = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())
 
-    fun getAuthRequest(): AuthorizationRequest {
-        val redirectUri = AuthConfig.CALLBACK_URL.toUri()
+    fun getEndSessionUrl(): String {
+        return AuthConfig.END_SESSION_URI +
+                "?client_id=" + AuthConfig.CLIENT_ID +
+                "&scope=" + AuthConfig.SCOPE +
+                "&redirect_uri=" + AuthConfig.LOGOUT_CALLBACK_URL +
+                "&state=" + state
+    }
 
-        return AuthorizationRequest.Builder(
-            serviceConfiguration,
-            AuthConfig.CLIENT_ID,
-            AuthConfig.RESPONSE_TYPE,
-            redirectUri
+    fun getAuthUrl(): String {
+        return AuthConfig.AUTH_URI +
+                "?client_id=" + AuthConfig.CLIENT_ID +
+                "&scope=" + AuthConfig.SCOPE +
+                "&redirect_uri=" + AuthConfig.CALLBACK_URL +
+                "&state=" + state
+    }
+
+    suspend fun updateTokens(refreshToken: String): TokensModel {
+        val grantType = "refresh_token"
+        val postParams =
+            "grant_type=" + grantType +
+                    "&refresh_token=" + refreshToken +
+                    "&client_id=" + AuthConfig.CLIENT_ID +
+                    "&client_secret=" + AuthConfig.CLIENT_SECRET
+        val url = URL(AuthConfig.TOKEN_URI)
+        val httpsURLConnection =
+            withContext(Dispatchers.IO) { url.openConnection() as HttpsURLConnection }
+        httpsURLConnection.requestMethod = "POST"
+        httpsURLConnection.setRequestProperty(
+            "Accept",
+            "application/json"
         )
-            .setScope(AuthConfig.SCOPE)
-            .build()
-    }
-
-    fun getEndSessionRequest(): EndSessionRequest {
-        return EndSessionRequest.Builder(serviceConfiguration)
-            .setPostLogoutRedirectUri(AuthConfig.LOGOUT_CALLBACK_URL.toUri())
-            .build()
-    }
-
-    fun getRefreshTokenRequest(refreshToken: String): TokenRequest {
-        return TokenRequest.Builder(
-            serviceConfiguration,
-            AuthConfig.CLIENT_ID
-        )
-            .setGrantType(GrantTypeValues.REFRESH_TOKEN)
-            .setScopes(AuthConfig.SCOPE)
-            .setRefreshToken(refreshToken)
-            .build()
-    }
-
-    fun getAuthorizationRequest(authCode: String?): TokenRequest{
-        val request =  TokenRequest.Builder(
-            serviceConfiguration,
-            AuthConfig.CLIENT_ID
-        )
-            .setGrantType(GrantTypeValues.AUTHORIZATION_CODE)
-            .setScopes(AuthConfig.SCOPE)
-            .setClientId(AuthConfig.CLIENT_ID)
-            .setRedirectUri(AuthConfig.CALLBACK_URL.toUri())
-            .setAuthorizationCode(authCode)
-            .build()
-
-        return request
-    }
-
-    suspend fun performTokenRequestSuspend(
-        authService: AuthorizationService,
-        tokenRequest: TokenRequest,
-    ): TokensModel {
-        return suspendCoroutine { continuation ->
-            authService.performTokenRequest(tokenRequest, getClientAuthentication()) {
-                    response, exception ->
-                when {
-                    response != null -> {
-                        val tokens = TokensModel(
-                            accessToken = response.accessToken.orEmpty(),
-                            refreshToken = response.refreshToken.orEmpty(),
-                            idToken = response.idToken.orEmpty()
-                        )
-                        continuation.resumeWith(Result.success(tokens))
-                    }
-                    exception != null -> { continuation.resumeWith(Result.failure(exception)) }
-                    else -> error("unreachable")
-                }
-            }
+        httpsURLConnection.doInput = true
+        httpsURLConnection.doOutput = true
+        val outputStreamWriter = OutputStreamWriter(httpsURLConnection.outputStream)
+        withContext(Dispatchers.IO) {
+            outputStreamWriter.write(postParams)
+            outputStreamWriter.flush()
         }
+        val response = httpsURLConnection.inputStream.bufferedReader()
+            .use { it.readText() }  // defaults to UTF-8
+        val jsonObject = JSONTokener(response).nextValue() as JSONObject
+        return TokensModel(
+            accessToken = jsonObject.getString("access_token"),
+            refreshToken = jsonObject.getString("refresh_token")
+        )
+
+
     }
 
-    private fun getClientAuthentication(): ClientAuthentication {
-        return ClientSecretPost(AuthConfig.CLIENT_SECRET)
+
+    suspend fun getTokens(
+        code: String
+    ): TokensModel {
+        val grantType = "authorization_code"
+        val postParams =
+            "grant_type=" + grantType +
+                    "&code=" + code +
+                    "&redirect_uri=" + AuthConfig.CALLBACK_URL +
+                    "&client_id=" + AuthConfig.CLIENT_ID +
+                    "&client_secret=" + AuthConfig.CLIENT_SECRET
+        val url = URL(AuthConfig.TOKEN_URI)
+        val httpsURLConnection =
+            withContext(Dispatchers.IO) { url.openConnection() as HttpsURLConnection }
+        httpsURLConnection.requestMethod = "POST"
+        httpsURLConnection.setRequestProperty(
+            "Accept",
+            "application/json"
+        )
+        httpsURLConnection.doInput = true
+        httpsURLConnection.doOutput = true
+        val outputStreamWriter = OutputStreamWriter(httpsURLConnection.outputStream)
+        withContext(Dispatchers.IO) {
+            outputStreamWriter.write(postParams)
+            outputStreamWriter.flush()
+        }
+        val response = httpsURLConnection.inputStream.bufferedReader()
+            .use { it.readText() }  // defaults to UTF-8
+        val jsonObject = JSONTokener(response).nextValue() as JSONObject
+        return TokensModel(
+            accessToken = jsonObject.getString("access_token"),
+            refreshToken = jsonObject.getString("refresh_token")
+        )
     }
 
-    private object AuthConfig {
+    object AuthConfig {
         const val AUTH_URI = "https://github.com/login/oauth/authorize"
         const val TOKEN_URI = "https://github.com/login/oauth/access_token"
         const val END_SESSION_URI = "https://github.com/logout"
-        const val RESPONSE_TYPE = ResponseTypeValues.CODE
         const val SCOPE = "user,repo"
         const val CLIENT_ID = "Iv1.7bbef208d72b5593"
         const val CLIENT_SECRET = "e890aa3683f34d55b8944e8d355c760df07bab3b"

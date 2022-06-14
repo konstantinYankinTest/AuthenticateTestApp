@@ -6,7 +6,6 @@ import com.lookout.data.auth.AppAuth
 import com.lookout.data.interseptors.AuthorizationInterceptor.Companion.AUTHORIZATION_HEADER
 import com.lookout.data.local.Preferences
 import kotlinx.coroutines.runBlocking
-import net.openid.appauth.AuthorizationService
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
@@ -15,7 +14,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 class AuthorizationFailedInterceptor @Inject constructor(
-    private val authorizationService: AuthorizationService,
+//    private val authorizationService: AuthorizationService,
     private val preferences: Preferences
 ) : Interceptor {
 
@@ -77,15 +76,11 @@ class AuthorizationFailedInterceptor @Inject constructor(
 
         val tokenRefreshed = runBlocking {
             runCatching {
-                val refreshRequest =
-                    AppAuth.getRefreshTokenRequest(preferences.refreshToken.orEmpty())
-                AppAuth.performTokenRequestSuspend(authorizationService, refreshRequest)
-            }
-                .getOrNull()
+                    AppAuth.updateTokens(preferences.refreshToken.orEmpty())
+            }.getOrNull()
                 ?.let {
                     AccessToken.accessToken = it.accessToken
                     preferences.refreshToken = it.refreshToken
-                    preferences.idToken = it.idToken
                     true
                 } ?: false
         }

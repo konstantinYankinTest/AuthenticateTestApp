@@ -68,8 +68,6 @@ dependencies {
     debugImplementation "androidx.compose.ui:ui-tooling:1.1.1"
     implementation "androidx.compose.ui:ui-tooling-preview:1.1.1"
 
-    // AppAuth
-    implementation 'net.openid:appauth:0.11.1'
 
     // hilt
     kapt "com.google.dagger:hilt-compiler:$hilt_version"

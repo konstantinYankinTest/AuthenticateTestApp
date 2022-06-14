@@ -4,10 +4,8 @@ import com.lookout.data.AccessToken
 import com.lookout.data.auth.AppAuth
 import com.lookout.data.local.Preferences
 import com.lookout.domain.repositories.AuthRepository
-import net.openid.appauth.AuthorizationRequest
-import net.openid.appauth.AuthorizationService
-import net.openid.appauth.EndSessionRequest
-import net.openid.appauth.TokenRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
@@ -17,32 +15,29 @@ class AuthRepositoryImpl @Inject constructor(
     override fun logout() {
         AccessToken.accessToken = null
         preferences.refreshToken = null
-        preferences.idToken = null
     }
 
-    override fun getAuthRequest(): AuthorizationRequest {
-        return AppAuth.getAuthRequest()
+    override fun getAuthUrl(): String {
+        return AppAuth.getAuthUrl()
     }
 
-    override fun getEndSessionRequest(): EndSessionRequest {
-        return AppAuth.getEndSessionRequest()
+    override fun getEndSessionUrl(): String {
+        return AppAuth.getEndSessionUrl()
     }
 
-    override suspend fun performTokenRequest(
-        authService: AuthorizationService,
-        tokenRequest: TokenRequest
-    ) {
-        val tokens = AppAuth.performTokenRequestSuspend(authService, tokenRequest)
-        preferences.refreshToken = tokens.refreshToken
-        preferences.idToken = tokens.idToken
-        AccessToken.accessToken = tokens.accessToken
+    override suspend fun performTokenRequest(code: String) {
+        withContext(Dispatchers.IO) {
+            val tokens = AppAuth.getTokens(code)
+            preferences.refreshToken = tokens.refreshToken
+            AccessToken.accessToken = tokens.accessToken
+        }
     }
 
-    override suspend fun refreshTokens(authService: AuthorizationService) {
-        val tokenRequest = AppAuth.getRefreshTokenRequest(preferences.refreshToken.orEmpty())
-        val tokens = AppAuth.performTokenRequestSuspend(authService, tokenRequest)
-        preferences.refreshToken = tokens.refreshToken
-        preferences.idToken = tokens.idToken
-        AccessToken.accessToken = tokens.accessToken
+    override suspend fun refreshTokens() {
+        withContext(Dispatchers.IO){
+            val tokens = AppAuth.updateTokens(preferences.refreshToken.orEmpty())
+            preferences.refreshToken = tokens.refreshToken
+            AccessToken.accessToken = tokens.accessToken
+        }
     }
 }

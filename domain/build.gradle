@@ -41,9 +41,6 @@ dependencies {
     // coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0'
 
-    // AppAuth
-    implementation 'net.openid:appauth:0.11.1'
-
     // hilt
     kapt "com.google.dagger:hilt-compiler:$hilt_version"
     implementation "com.google.dagger:hilt-android:$hilt_version"

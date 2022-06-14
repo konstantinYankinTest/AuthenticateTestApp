@@ -23,16 +23,9 @@ class Preferences @Inject constructor(
             preferences.edit().putString(REFRESH_TOKEN_KEY, value).apply()
         }
 
-    var idToken: String?
-        get() = preferences.getString(ID_TOKEN_KEY, null)
-        set(value) {
-            preferences.edit().putString(ID_TOKEN_KEY, value).apply()
-        }
-
     companion object {
 
         private const val ACCESS_TOKEN_KEY = "ACCESS_TOKEN_KEY"
         private const val REFRESH_TOKEN_KEY = "REFRESH_TOKEN_KEY"
-        private const val ID_TOKEN_KEY = "ID_TOKEN_KEY"
     }
 }
