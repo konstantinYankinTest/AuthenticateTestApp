@@ -59,6 +59,7 @@ class MainActivity : FragmentActivity() {
     @Composable
     fun MainScreen() {
         val viewState by remember { viewModel.state }
+
         when (val state = viewState) {
 
             Empty -> MainButtonView(onButtonClick = { viewModel.openLoginPage() })

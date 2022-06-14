@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Intent
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.browser.customtabs.TrustedWebUtils
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -61,9 +62,12 @@ class MainViewModel @Inject constructor(
     }
 
     fun openLoginPage() {
+        val customTabsIntent = authService.createCustomTabsIntentBuilder().build().apply {
+            intent.putExtra(TrustedWebUtils.EXTRA_LAUNCH_AS_TRUSTED_WEB_ACTIVITY, true)
+        }
         val openAuthPageIntent = authService.getAuthorizationRequestIntent(
             getAuthRequestUseCase(),
-            getCustomTabIntent()
+            customTabsIntent
         )
         _state.value = UiState.OpenLoginPage(openAuthPageIntent)
     }
