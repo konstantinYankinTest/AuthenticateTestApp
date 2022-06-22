@@ -3,27 +3,44 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.lookout.authenticatetestapp">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
+        android:name=".App"
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AuthenticateTestApp"
-        tools:targetApi="31">
+        android:theme="@style/Theme.AuthenticateTestApp">
         <activity
-            android:name=".MainActivity"
+            android:name=".presentation.main.MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.AuthenticateTestApp">
+            android:theme="@style/Theme.AuthenticateTestApp.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".presentation.github.GithubActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AuthenticateTestApp.NoActionBar"/>
+        <activity
+            android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:exported="true"
+            tools:node="replace">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="authenticatetestapp" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>
